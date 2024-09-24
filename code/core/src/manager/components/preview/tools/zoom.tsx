@@ -2,9 +2,9 @@ import type { MouseEventHandler, PropsWithChildren, SyntheticEvent } from 'react
 import React, { Component, createContext, memo, useCallback } from 'react';
 
 import { IconButton, Separator } from '@storybook/core/components';
+import { styled } from '@storybook/core/theming';
 import type { Addon_BaseType } from '@storybook/core/types';
 import { ZoomIcon, ZoomOutIcon, ZoomResetIcon } from '@storybook/icons';
-import { styled } from '@storybook/core/theming';
 
 import { types } from '@storybook/core/manager-api';
 
