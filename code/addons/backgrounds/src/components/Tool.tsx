@@ -1,4 +1,4 @@
-import React, { Fragment, memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 
 import { IconButton, TooltipLinkList, WithTooltip } from 'storybook/internal/components';
 import { useGlobals, useParameter } from 'storybook/internal/manager-api';
@@ -128,7 +128,7 @@ const Pure = memo(function PureTool(props: PureProps) {
                         onHide();
                       },
                     })),
-                  ]}
+                  ].flat()}
                 />
               );
             }}
