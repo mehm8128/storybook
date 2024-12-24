@@ -72,7 +72,7 @@ export default async (
     docsOptions,
     entries,
     nonNormalizedStories,
-    modulesCount = 1000,
+    modulesCount,
     build,
     tagsOptions,
   ] = await Promise.all([
@@ -86,7 +86,7 @@ export default async (
     presets.apply('docs'),
     presets.apply<string[]>('entries', []),
     presets.apply('stories', []),
-    options.cache?.get('modulesCount').catch(() => {}),
+    options.cache?.get('modulesCount', 1000),
     options.presets.apply('build'),
     presets.apply('tags', {}),
   ]);
@@ -195,7 +195,9 @@ export default async (
       }),
       new DefinePlugin({
         ...stringifyProcessEnvs(envs),
-        NODE_ENV: JSON.stringify(process.env.NODE_ENV),
+        NODE_ENV: JSON.stringify(
+          features?.developmentModeForBuild && isProd ? 'development' : process.env.NODE_ENV
+        ),
       }),
       new ProvidePlugin({ process: require.resolve('process/browser.js') }),
       isProd ? null : new HotModuleReplacementPlugin(),

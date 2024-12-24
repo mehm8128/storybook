@@ -92,7 +92,7 @@ export const createTabsTool = (tabs: Addon_BaseType[]): Addon_BaseType => ({
                 const isActive = rp.path.includes(`tab=${tab.id}`);
                 return (
                   <TabButton
-                    disabled={tab.disabled}
+                    disabled={!!tab.disabled}
                     active={isActive}
                     onClick={() => {
                       rp.applyQueryParams({ tab: tabIdToApply });
@@ -155,7 +155,7 @@ export const ToolbarComp = React.memo<ToolData>(function ToolbarComp({
                 {tabs.map((tab, index) => {
                   return (
                     <TabButton
-                      disabled={tab.disabled}
+                      disabled={!!tab.disabled}
                       active={tab.id === tabId || (tab.id === 'canvas' && !tabId)}
                       onClick={() => {
                         api.applyQueryParams({ tab: tab.id === 'canvas' ? undefined : tab.id });
@@ -199,7 +199,10 @@ function toolbarItemHasBeenExcluded(item: Partial<Addon_BaseType>, entry: LeafEn
   const toolbarItemsFromStoryParameters = 'toolbar' in parameters ? parameters.toolbar : undefined;
   const { toolbar: toolbarItemsFromAddonsConfig } = addons.getConfig();
 
-  const toolbarItems = merge(toolbarItemsFromAddonsConfig, toolbarItemsFromStoryParameters);
+  const toolbarItems = merge(
+    toolbarItemsFromAddonsConfig || {},
+    toolbarItemsFromStoryParameters || {}
+  );
 
   // @ts-expect-error (non strict)
   return toolbarItems ? !!toolbarItems[item?.id]?.hidden : false;

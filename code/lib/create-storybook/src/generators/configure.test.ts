@@ -26,6 +26,7 @@ describe('configureMain', () => {
       framework: {
         name: '@storybook/react-vite',
       },
+      frameworkPackage: '@storybook/react-vite',
     });
 
     const { calls } = vi.mocked(fsp.writeFile).mock;
@@ -55,6 +56,7 @@ describe('configureMain', () => {
       framework: {
         name: '@storybook/react-vite',
       },
+      frameworkPackage: '@storybook/react-vite',
     });
 
     const { calls } = vi.mocked(fsp.writeFile).mock;
@@ -81,7 +83,6 @@ describe('configureMain', () => {
       language: SupportedLanguage.JAVASCRIPT,
       prefixes: [],
       addons: [
-        "%%path.dirname(require.resolve(path.join('@storybook/addon-links', 'package.json')))%%",
         "%%path.dirname(require.resolve(path.join('@storybook/addon-essentials', 'package.json')))%%",
         "%%path.dirname(require.resolve(path.join('@storybook/preset-create-react-app', 'package.json')))%%",
         "%%path.dirname(require.resolve(path.join('@storybook/addon-interactions', 'package.json')))%%",
@@ -90,6 +91,7 @@ describe('configureMain', () => {
       framework: {
         name: "%%path.dirname(require.resolve(path.join('@storybook/react-webpack5', 'package.json')))%%",
       },
+      frameworkPackage: '@storybook/react-webpack5',
     });
 
     const { calls } = vi.mocked(fsp.writeFile).mock;
@@ -103,7 +105,6 @@ describe('configureMain', () => {
       const config = {
         stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
         addons: [
-          path.dirname(require.resolve(path.join('@storybook/addon-links', 'package.json'))),
           path.dirname(require.resolve(path.join('@storybook/addon-essentials', 'package.json'))),
           path.dirname(require.resolve(path.join('@storybook/preset-create-react-app', 'package.json'))),
           path.dirname(require.resolve(path.join('@storybook/addon-interactions', 'package.json'))),

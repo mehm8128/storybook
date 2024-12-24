@@ -1,14 +1,13 @@
-```ts title="vitest.workspace.ts" renderer="react"
+```ts filename="vitest.workspace.ts" renderer="react"
 import { defineWorkspace } from 'vitest/config';
 import { storybookTest } from '@storybook/experimental-addon-test/vitest-plugin';
 // 👇 If you're using Next.js, apply this framework plugin as well
-// import { storybookNextjsPlugin } from '@storybook/experimental-nextjs-vite/vite-plugin';
+// import { storybookNextJsPlugin } from '@storybook/experimental-nextjs-vite/vite-plugin';
 
 export default defineWorkspace([
   // This is the path to your existing Vitest config file
   './vitest.config.ts',
   {
-    name: 'storybook',
     // This is the path to your existing Vite config file
     extends: './vite.config.ts',
     plugins: [
@@ -17,11 +16,10 @@ export default defineWorkspace([
         // The --ci flag will skip prompts and not open a browser
         storybookScript: 'yarn storybook --ci',
       }),
-      // storybookNextjsPlugin(),
+      // storybookNextJsPlugin(),
     ],
     test: {
-      // Glob pattern to find story files
-      include: ['src/**/*.stories.?(m)[jt]s?(x)'],
+      name: 'storybook',
       // Enable browser mode
       browser: {
         enabled: true,
@@ -30,10 +28,6 @@ export default defineWorkspace([
         provider: 'playwright',
         headless: true,
       },
-      // Speed up tests and better match how they run in Storybook itself
-      // https://vitest.dev/config/#isolate
-      // Consider removing this if you have flaky tests
-      isolate: false,
       setupFiles: ['./.storybook/vitest.setup.ts'],
     },
   },
@@ -51,7 +45,6 @@ export default defineWorkspace([
   // This is the path to your existing Vitest config file
   './vitest.config.ts',
   {
-    name: 'storybook',
     // This is the path to your existing Vite config file
     extends: './vite.config.ts',
     plugins: [
@@ -63,8 +56,7 @@ export default defineWorkspace([
       storybookVuePlugin(),
     ],
     test: {
-      // Glob pattern to find story files
-      include: ['src/**/*.stories.?(m)[jt]s?(x)'],
+      name: 'storybook',
       // Enable browser mode
       browser: {
         enabled: true,
@@ -73,10 +65,6 @@ export default defineWorkspace([
         provider: 'playwright',
         headless: true,
       },
-      // Speed up tests and better match how they run in Storybook itself
-      // https://vitest.dev/config/#isolate
-      // Consider removing this if you have flaky tests
-      isolate: false,
       setupFiles: ['./.storybook/vitest.setup.ts'],
     },
   },
@@ -87,7 +75,7 @@ export default defineWorkspace([
 import { defineConfig, mergeConfig } from 'vitest/config';
 import { storybookTest } from '@storybook/experimental-addon-test/vitest-plugin';
 // 👇 If you're using Sveltekit, apply this framework plugin as well
-// import { storybookNextjsPlugin } from '@storybook/sveltekit/vite-plugin';
+// import { storybookSveltekitPlugin } from '@storybook/sveltekit/vite-plugin';
 
 import viteConfig from './vite.config';
 
@@ -95,7 +83,6 @@ export default defineWorkspace([
   // This is the path to your existing Vitest config file
   './vitest.config.ts',
   {
-    name: 'storybook',
     // This is the path to your existing Vite config file
     extends: './vite.config.ts',
     plugins: [
@@ -107,8 +94,7 @@ export default defineWorkspace([
       // storybookSveltekitPlugin(),
     ],
     test: {
-      // Glob pattern to find story files
-      include: ['src/**/*.stories.?(m)[jt]s?(x)'],
+      name: 'storybook',
       // Enable browser mode
       browser: {
         enabled: true,
@@ -117,10 +103,6 @@ export default defineWorkspace([
         provider: 'playwright',
         headless: true,
       },
-      // Speed up tests and better match how they run in Storybook itself
-      // https://vitest.dev/config/#isolate
-      // Consider removing this if you have flaky tests
-      isolate: false,
       setupFiles: ['./.storybook/vitest.setup.ts'],
     },
   },

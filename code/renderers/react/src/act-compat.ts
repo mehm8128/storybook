@@ -8,9 +8,14 @@ declare const globalThis: {
   IS_REACT_ACT_ENVIRONMENT: boolean;
 };
 
+// We need to spread React to avoid
+// export 'act' (imported as 'React4') was not found in 'react' errors in webpack
+// We do check if act exists, but webpack will still throw an error on compile time
+const clonedReact = { ...React };
+
 const reactAct =
   // @ts-expect-error act might not be available in some versions of React
-  typeof React.act === 'function' ? React.act : DeprecatedReactTestUtils.act;
+  typeof clonedReact.act === 'function' ? clonedReact.act : DeprecatedReactTestUtils.act;
 
 export function setReactActEnvironment(isReactActEnvironment: boolean) {
   globalThis.IS_REACT_ACT_ENVIRONMENT = isReactActEnvironment;
@@ -35,15 +40,15 @@ function withGlobalActEnvironment(actImplementation: (callback: () => void) => P
         return result;
       });
       if (callbackNeedsToBeAwaited) {
-        const thenable: Promise<any> = actResult;
+        const thenable = actResult;
         return {
           then: (resolve: (param: any) => void, reject: (param: any) => void) => {
             thenable.then(
-              (returnValue) => {
+              (returnValue: any) => {
                 setReactActEnvironment(previousActEnvironment);
                 resolve(returnValue);
               },
-              (error) => {
+              (error: any) => {
                 setReactActEnvironment(previousActEnvironment);
                 reject(error);
               }
@@ -63,4 +68,7 @@ function withGlobalActEnvironment(actImplementation: (callback: () => void) => P
   };
 }
 
-export const act = withGlobalActEnvironment(reactAct);
+export const act =
+  process.env.NODE_ENV === 'production'
+    ? (cb: (...args: any[]) => any) => cb()
+    : withGlobalActEnvironment(reactAct);

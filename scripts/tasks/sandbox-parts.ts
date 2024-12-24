@@ -1,5 +1,7 @@
 // This file requires many imports from `../code`, which requires both an install and bootstrap of
 // the repo to work properly. So we load it async in the task runner *after* those steps.
+import { isFunction } from 'es-toolkit';
+// eslint-disable-next-line depend/ban-dependencies
 import {
   copy,
   ensureDir,
@@ -12,7 +14,6 @@ import {
   writeJson,
 } from 'fs-extra';
 import JSON5 from 'json5';
-import { isFunction } from 'lodash';
 import { createRequire } from 'module';
 import { join, relative, resolve, sep } from 'path';
 import slash from 'slash';
@@ -88,7 +89,7 @@ export const install: Task['run'] = async ({ sandboxDir, key }, { link, dryRun, 
       dryRun,
       debug,
     });
-    await addWorkaroundResolutions({ cwd, dryRun, debug });
+    await addWorkaroundResolutions({ cwd, dryRun, debug, key });
   } else {
     // We need to add package resolutions to ensure that we only ever install the latest version
     // of any storybook packages as verdaccio is not able to both proxy to npm and publish over
@@ -109,7 +110,7 @@ export const install: Task['run'] = async ({ sandboxDir, key }, { link, dryRun, 
       'vue3-vite/default-js',
       'vue3-vite/default-ts',
     ];
-    if (sandboxesNeedingWorkarounds.includes(key)) {
+    if (sandboxesNeedingWorkarounds.includes(key) || key.includes('vite')) {
       await addWorkaroundResolutions({ cwd, dryRun, debug });
     }
 
@@ -137,6 +138,8 @@ export const init: Task['run'] = async (
     extra = { type: 'html' };
   } else if (template.expected.renderer === '@storybook/server') {
     extra = { type: 'server' };
+  } else if (template.expected.framework === '@storybook/react-native-web-vite') {
+    extra = { type: 'react_native_web' };
   }
 
   await executeCLIStep(steps.init, {
@@ -176,8 +179,13 @@ export const init: Task['run'] = async (
 
   if (!skipTemplateStories) {
     for (const addon of addons) {
-      const addonName = `@storybook/addon-${addon}`;
-      await executeCLIStep(steps.add, { argument: addonName, cwd, dryRun, debug });
+      await executeCLIStep(steps.add, {
+        argument: addon,
+        cwd,
+        dryRun,
+        debug,
+        optionValues: { yes: true },
+      });
     }
   }
 };
@@ -237,7 +245,19 @@ function addEsbuildLoaderToStories(mainConfig: ConfigFile) {
   And allow source directories to complement any existing allow patterns
   (".storybook" is already being allowed by builder-vite)
 */
-function setSandboxViteFinal(mainConfig: ConfigFile) {
+function setSandboxViteFinal(mainConfig: ConfigFile, template: TemplateKey) {
+  const temporaryAliasWorkaround = template.includes('nuxt')
+    ? `
+    // TODO: Remove this once Storybook Nuxt applies this internally
+    resolve: {
+      ...config.resolve,
+      alias: {
+        ...config.resolve.alias,
+        vue: 'vue/dist/vue.esm-bundler.js',
+      }
+    }
+  `
+    : '';
   const viteFinalCode = `
   (config) => ({
     ...config,
@@ -249,6 +269,7 @@ function setSandboxViteFinal(mainConfig: ConfigFile) {
         allow: ['stories', 'src', 'template-stories', 'node_modules', ...(config.server?.fs?.allow || [])],
       },
     },
+    ${temporaryAliasWorkaround}
   })`;
   // @ts-expect-error (Property 'expression' does not exist on type 'BlockStatement')
   mainConfig.setFieldNode(['viteFinal'], babelParse(viteFinalCode).program.body[0].expression);
@@ -390,6 +411,25 @@ const getVitestPluginInfo = (details: TemplateDetails) => {
 
 export async function setupVitest(details: TemplateDetails, options: PassedOptionValues) {
   const { sandboxDir, template } = details;
+  const packageJsonPath = join(sandboxDir, 'package.json');
+  const packageJson = await readJson(packageJsonPath);
+
+  packageJson.scripts = {
+    ...packageJson.scripts,
+    vitest: 'vitest --reporter=default --reporter=hanging-process --test-timeout=5000',
+  };
+
+  // This workaround is needed because Vitest seems to have issues in link mode
+  // so the /setup-file and /global-setup files from the vitest addon won't work in portal protocol
+  if (options.link) {
+    const vitestAddonPath = relative(sandboxDir, join(CODE_DIRECTORY, 'addons', 'test'));
+    packageJson.resolutions = {
+      ...packageJson.resolutions,
+      '@storybook/experimental-addon-test': `file:${vitestAddonPath}`,
+    };
+  }
+
+  await writeJson(packageJsonPath, packageJson, { spaces: 2 });
 
   const isVue = template.expected.renderer === '@storybook/vue3';
   const isNextjs = template.expected.framework.includes('nextjs');
@@ -412,8 +452,9 @@ export async function setupVitest(details: TemplateDetails, options: PassedOptio
     dedent`import { beforeAll } from 'vitest'
     import { setProjectAnnotations } from '${storybookPackage}'
     import * as rendererDocsAnnotations from '${template.expected.renderer}/dist/entry-preview-docs.mjs'
+    import * as addonA11yAnnotations from '@storybook/addon-a11y/preview'
     import * as addonActionsAnnotations from '@storybook/addon-actions/preview'
-    import * as addonInteractionsAnnotations from '@storybook/addon-interactions/preview'
+    import * as addonTestAnnotations from '@storybook/experimental-addon-test/preview'
     import '../src/stories/components'
     import * as coreAnnotations from '../template-stories/core/preview'
     import * as toolbarAnnotations from '../template-stories/addons/toolbars/preview'
@@ -421,13 +462,14 @@ export async function setupVitest(details: TemplateDetails, options: PassedOptio
     ${isVue ? 'import * as vueAnnotations from "../src/stories/renderers/vue3/preview.js"' : ''}
 
     const annotations = setProjectAnnotations([
+      ${isVue ? 'vueAnnotations,' : ''}
       rendererDocsAnnotations,
-      projectAnnotations,
       coreAnnotations,
       toolbarAnnotations,
       addonActionsAnnotations,
-      addonInteractionsAnnotations,
-      ${isVue ? 'vueAnnotations,' : ''}
+      addonTestAnnotations,
+      addonA11yAnnotations,
+      projectAnnotations,
     ])
 
     beforeAll(annotations.beforeAll)`
@@ -471,14 +513,11 @@ export async function setupVitest(details: TemplateDetails, options: PassedOptio
           test: {
             name: "storybook",
             pool: "threads",
-            include: [
-              "src/**/*.{story,stories}.?(c|m)[jt]s?(x)",
-              "template-stories/**/*.{story,stories}.?(c|m)[jt]s?(x)",
-            ],
             exclude: [
               ...defaultExclude,
               // TODO: investigate TypeError: Cannot read properties of null (reading 'useContext')
               "**/*argtypes*",
+              ${template.expected.renderer === '@storybook/svelte' ? '"**/*.stories.svelte",' : ''}
             ],
             /**
              * TODO: Either fix or acknowledge limitation of:
@@ -500,26 +539,6 @@ export async function setupVitest(details: TemplateDetails, options: PassedOptio
       ]);
   `
   );
-
-  const packageJsonPath = join(sandboxDir, 'package.json');
-  const packageJson = await readJson(packageJsonPath);
-
-  packageJson.scripts = {
-    ...packageJson.scripts,
-    vitest: 'vitest --reporter=default --reporter=hanging-process --test-timeout=5000',
-  };
-
-  // This workaround is needed because Vitest seems to have issues in link mode
-  // so the /setup-file and /global-setup files from the vitest addon won't work in portal protocol
-  if (options.link) {
-    const vitestAddonPath = relative(sandboxDir, join(CODE_DIRECTORY, 'addons', 'test'));
-    packageJson.resolutions = {
-      ...packageJson.resolutions,
-      '@storybook/experimental-addon-test': `file:${vitestAddonPath}`,
-    };
-  }
-
-  await writeJson(packageJsonPath, packageJson, { spaces: 2 });
 }
 
 export async function addExtraDependencies({
@@ -560,9 +579,10 @@ export const addStories: Task['run'] = async (
   { sandboxDir, template, key },
   { addon: extraAddons, disableDocs }
 ) => {
-  logger.log('💃 adding stories');
+  logger.log('💃 Adding stories');
   const cwd = sandboxDir;
-  const storiesPath = await findFirstPath([join('src', 'stories'), 'stories'], { cwd });
+  const storiesPath =
+    (await findFirstPath([join('src', 'stories'), 'stories'], { cwd })) || 'stories';
 
   const mainConfig = await readConfig({ fileName: 'main', cwd });
   const packageManager = JsPackageManagerFactory.getPackageManager({}, sandboxDir);
@@ -663,6 +683,15 @@ export const addStories: Task['run'] = async (
       cwd,
       disableDocs,
     });
+
+    await linkPackageStories(
+      await workspacePath('addon test package', '@storybook/experimental-addon-test'),
+      {
+        mainConfig,
+        cwd,
+        disableDocs,
+      }
+    );
   }
 
   const mainAddons = (mainConfig.getSafeFieldValue(['addons']) || []).reduce(
@@ -717,7 +746,7 @@ export const extendMain: Task['run'] = async ({ template, sandboxDir, key }, { d
     addRefs(mainConfig);
   }
 
-  const templateConfig = isFunction(template.modifications?.mainConfig)
+  const templateConfig: any = isFunction(template.modifications?.mainConfig)
     ? template.modifications?.mainConfig(mainConfig)
     : template.modifications?.mainConfig || {};
   const configToAdd = {
@@ -784,7 +813,7 @@ export const extendMain: Task['run'] = async ({ template, sandboxDir, key }, { d
   }
 
   if (template.expected.builder === '@storybook/builder-vite') {
-    setSandboxViteFinal(mainConfig);
+    setSandboxViteFinal(mainConfig, key);
   }
   await writeConfig(mainConfig);
 };
@@ -794,7 +823,7 @@ export const extendPreview: Task['run'] = async ({ template, sandboxDir }) => {
   const previewConfig = await readConfig({ cwd: sandboxDir, fileName: 'preview' });
 
   if (template.expected.builder.includes('vite')) {
-    previewConfig.setFieldValue(['tags'], ['vitest']);
+    previewConfig.setFieldValue(['tags'], ['vitest', '!a11ytest']);
   }
 
   await writeConfig(previewConfig);
