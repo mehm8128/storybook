@@ -165,6 +165,7 @@ cd path/to/your/storybook/fork/code
 
 # Build the specified packages in watch mode 
 yarn build --watch react core-server api addon-docs 
+```
 
 Most package names can be found after `@storybook/` in the published package.
 

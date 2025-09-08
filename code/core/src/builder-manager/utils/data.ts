@@ -12,6 +12,7 @@ export const getData = async (options: Options) => {
 
   const features = options.presets.apply<Record<string, string | boolean>>('features');
   const logLevel = options.presets.apply<string>('logLevel');
+  const lang = options.presets.apply<string>('lang');
   const title = options.presets.apply<string>('title');
   const docsOptions = options.presets.apply('docs', {});
   const tagsOptions = options.presets.apply('tags', {});
@@ -28,6 +29,7 @@ export const getData = async (options: Options) => {
   return {
     refs,
     features,
+    lang,
     title,
     docsOptions,
     template,

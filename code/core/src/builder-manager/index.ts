@@ -151,6 +151,7 @@ const starter: StarterFunction = async function* starterGeneratorFn({
     instance,
     refs,
     template,
+    lang,
     title,
     logLevel,
     docsOptions,
@@ -205,6 +206,7 @@ const starter: StarterFunction = async function* starterGeneratorFn({
 
   const html = await renderHTML(
     template,
+    lang,
     title,
     favicon,
     customHead,
@@ -266,6 +268,7 @@ const builder: BuilderFunction = async function* builderGeneratorFn({ startTime,
     instance,
     refs,
     template,
+    lang,
     title,
     logLevel,
     docsOptions,
@@ -303,6 +306,7 @@ const builder: BuilderFunction = async function* builderGeneratorFn({ startTime,
 
   const html = await renderHTML(
     template,
+    lang,
     title,
     favicon,
     customHead,

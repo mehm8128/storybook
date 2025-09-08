@@ -23,6 +23,7 @@ export async function getManagerMainTemplate() {
 
 export const renderHTML = async (
   template: Promise<string>,
+  lang: Promise<string>,
   title: Promise<string | false>,
   favicon: Promise<string>,
   customHead: Promise<string | false>,
@@ -44,6 +45,7 @@ export const renderHTML = async (
   );
 
   return render(templateRef, {
+    lang: await lang,
     title: titleRef ? `${titleRef} - Storybook` : 'Storybook',
     files: { js: jsFiles, css: cssFiles },
     favicon: await favicon,
